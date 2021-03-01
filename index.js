@@ -25,7 +25,7 @@ client.on('message', async message => {
 const http = require('http');
 const server = http.createServer((request, response) => {
     response.writeHead(200, {"Content-Type": "text/plain"});
-    response.end(`Hi, I'm ${name}! This page serves to keep the bot process up 24/7 on Microsoft Azure.`);
+    response.end(`Hi, I'm AutoDelete! This page serves to keep the bot process up 24/7 on Microsoft Azure.`);
 });
 const port = process.env.PORT || 1337;
 server.listen(port);
