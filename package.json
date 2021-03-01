@@ -1,0 +1,13 @@
+{
+  "name": "autodelete-discord",
+  "version": "1.0.0",
+  "description": "Automatically deletes messages in a channel after a certain time.",
+  "main": "index.js",
+  "author": "Michael West",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "discord.js": "^12.5.1",
+    "dotenv": "^8.2.0"
+  }
+}
