@@ -4,28 +4,36 @@ if (process.env.NODE_ENV !== 'production') {
     require('dotenv').config();
 }
 
-const timeMinutes = process.env.TIMEOUT_MINUTES;
-const timeout = (timeMinutes * (60000));
+const channels = process.env.CHANNELS.split(',')
+const timeouts = process.env.TIMEOUTS.split(',')
+let timeoutMilliseconds = []
 
 client.login(process.env.TOKEN);
 
+// Login, convert the timeouts to milliseconds and print information to console.
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
-    console.log(`Messages will timeout after ${timeout} milliseconds (that's ${timeMinutes} minute(s))`);
-    client.user.setActivity('with a recycle bin', { type: 'PLAYING' });
-});
-
-client.on('message', async message => {
-    if (message.channel.id === process.env.CHANNEL) {
-        setTimeout(() => message.delete(), timeout);
+    timeouts.forEach(timeout => { timeoutMilliseconds.push(timeout * 60000) })
+    for (const index in channels) {
+        console.log(`Operating in channel ID: ${channels[index]} with a timeout of ${timeoutMilliseconds[index]} milliseconds (that's ${timeouts[index]} minute(s))`)
     }
 });
 
-// Spin up a basic HTTP front-end so Azure doesn't put us to sleep.
+client.on('message', async message => {
+    // We can't use foreach here, we need the index to line up with the timeouts.
+    for (const index in channels) {
+        console.log(channels[index])
+        if (message.channel.id === channels[index]) {
+            setTimeout(() => message.delete(), timeoutMilliseconds[index]);
+        }
+    }
+});
+
+// Spin up a basic HTML front-end page.
 const http = require('http');
 const server = http.createServer((request, response) => {
     response.writeHead(200, {"Content-Type": "text/plain"});
-    response.end(`Hi, I'm AutoDelete! This page serves to keep the bot process up 24/7 on Microsoft Azure.`);
+    response.end(`Hi, I'm AutoDelete!`);
 });
 const port = process.env.PORT || 1337;
 server.listen(port);
