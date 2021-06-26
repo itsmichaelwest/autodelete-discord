@@ -18,19 +18,12 @@ To set up AutoDelete, you will want to set the following variables:
 #### `TOKEN`
 This is the bot's Discord token that you'll get from the Developer Portal. Simple!
 
-#### `CHANNELS`
-This is a comma-delimited string of channel IDs you want to the bot to operate in. You can get these IDs by enabling *Developer Mode* in the Discord app, right-clicking the channel and choosing *Copy ID*.
-
-#### `TIMEOUTS`
-This is also a comma-delimited string of numbers, representing time in minutes. Each timeout will be linked to the channel at the same position in the `CHANNELS` string (i.e. the first item in this string will be the timeout for the first channel).
-
-If you need to use seconds instead of minutes, enter the value using the following calculation: `1 / 60 * [seconds] = value`.
+For more configuration options, a server administrator can run `!adx help` in a channel where AutoDelete can send messages.
 
 ## Known Issues
 
 * This bot doesn't scale all that well. Trying to run it in many channels that are high volume could result in messages not being deleted on time.
 * Discord API latency and limitations may result in messages being deleted a few seconds late. This is normal.
-* By design the bot cannot access messages posted in a channel before it comes online, it only sees them at the time they are sent.
 
 ## Contributing
 Bug fixes and improvements are always welcome, please feel free to make an issue or submit a pull request.

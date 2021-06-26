@@ -1,39 +1,154 @@
-const Discord = require('discord.js');
-const client = new Discord.Client();
-if (process.env.NODE_ENV !== 'production') {
-    require('dotenv').config();
-}
+import Discord from 'discord.js'
+const client = new Discord.Client()
+import { Low, JSONFile } from 'lowdb'
+import { fileURLToPath } from 'url'
+const prefix = '!'
 
-const channels = process.env.CHANNELS.split(',')
-const timeouts = process.env.TIMEOUTS.split(',')
-let timeoutMilliseconds = []
+import dotenv from 'dotenv'
+dotenv.config({ silent: process.env.NODE_ENV === 'production' })
 
-client.login(process.env.TOKEN);
+const dbFile2 = fileURLToPath(new URL('db.json', import.meta.url))
+const dbAdapter = new JSONFile(dbFile2)
+const db = new Low(dbAdapter)
 
-// Login, convert the timeouts to milliseconds and print information to console.
-client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag}!`);
-    timeouts.forEach(timeout => { timeoutMilliseconds.push(timeout * 60000) })
-    for (const index in channels) {
-        console.log(`Operating in channel ID: ${channels[index]} with a timeout of ${timeoutMilliseconds[index]} milliseconds (that's ${timeouts[index]} minute(s))`)
+// Login to Discord API
+client.login(process.env.TOKEN)
+
+// Convert the timeouts to milliseconds and print information to console.
+client.on('ready', async () => {
+    // Read database file
+    await db.read()
+    if (!db.data) {
+        db.data = {
+            settings: {
+                channels: [],
+                timeouts: [],
+                archive: ''
+            } 
+        }
     }
+    // Write database if it doesn't exist
+    await db.write()
+
+    console.log(`Logged in as ${client.user.tag}!`);
 });
 
+// When message is received, set a timeout to delete it.
 client.on('message', async message => {
-    // We can't use foreach here, we need the index to line up with the timeouts.
-    for (const index in channels) {
-        console.log(channels[index])
-        if (message.channel.id === channels[index]) {
-            setTimeout(() => message.delete(), timeoutMilliseconds[index]);
+    if (!message.content.startsWith(prefix)) {
+        // We can't use foreach here, we need the index to line up with the timeouts.
+        for (const index in db.data.settings.channels) {
+            if (message.channel.id === db.data.settings.channels[index]) {
+                setTimeout(() => message.delete(), db.data.settings.timeouts[index])
+                break
+            }
+        }
+    } else {
+        const args = message.content.slice(prefix.length).trim().split(/ +/)
+        const command = args.shift().toLowerCase()
+    
+        // Admin commands
+        switch (command) {
+            case 'adx':
+                if (message.member.hasPermission(Discord.Permissions.FLAGS.ADMINISTRATOR)) {
+                    switch (args[0]) {
+                        case 'channel':
+                            switch (args[1]) {
+                                case 'add':
+                                    db.data.settings.channels.push(args[2])
+                                    db.data.settings.timeouts.push(args[3] * 60000)
+                                    await db.write()
+                                    break
+                                case 'remove':
+                                    const index = db.data.settings.channels.indexOf(args[2])
+                                    if (index > -1) {
+                                        db.data.settings.channels.splice(index, 1)
+                                        db.data.settings.timeouts.splice(index, 1)
+                                    }
+                                    await db.write()
+                                    break
+                            }
+                            break
+                        case 'archive':
+                            switch (args[1]) {
+                                case 'set':
+                                    db.data.settings.archive = args[2]
+                                    await db.write()
+                                    break
+                                case 'clear':
+                                    db.data.settings.archive = ""
+                                    await db.write()
+                                    break
+                            }
+                        case 'clear':
+                            message.channel.send(`**Clearing <#${message.channel.id}>.** This may take some time, depending on the number of messages to delete due to Discord API restrictions.`)
+                            let fetched
+                            do {
+                                fetched = await message.channel.messages.fetch({limit: 100})
+                                console.log(`Fetched size is ${fetched.size}`)
+                                await message.channel.bulkDelete(fetched)
+                                console.log('Deleted 100 messages')
+                            } while(fetched.size >= 2)
+                            console.log('Done!')
+                            break
+                        case 'help':
+                            message.channel.send(
+                                `**AutoDelete administration reference**\n\`channel [add|remove] [channel ID] [timeout minutes]\` - Add or remove a channel from the automatic deletion list. The timeout value is required when adding a new channel.\n\`archive [set|clear] [channel ID]\` - Set or clear the channel used for archiving messages. If the channel is cleared, users will not be able to archive their messages.\n\`clear\` - Clears the current channel of all messages.`
+                            )
+                            break
+                        default:
+                            message.channel.send('Unknown command. Type `!adx help` for command reference.')
+                    }
+                } else {
+                    message.channel.send(`Sorry <@${message.author.id}>, you don't have *Administrator* permissions on this server and so cannot use \`!adx\` commands.`)
+                }
+                break
+            case 'archive':
+                if (db.data.settings.channels.includes(message.channel.id)) {
+                    message.channel.messages.fetch({ limit: 1 }).then(messages => {
+                        messages.forEach(msg => {
+                            if (msg.reference) {
+                                message.channel.messages.fetch(msg.reference.messageID).then(m => {
+                                    if (message.author.id === m.author.id) {
+                                        if (db.data.settings.archive !== '') {
+                                            client.channels.cache.get(db.data.settings.archive).send(`**<@${m.author.id}>**: ${m.content}`)
+                                        } else {
+                                            message.channel.send('An administrator needs to set up the channel to be used for archiving messages. Ask them to use the command `!adx archive set [channel ID]`.')
+                                        }  
+                                    } else {
+                                        message.channel.send(`Sorry <@${message.author.id}>, messages can only be archived by their author right now. This behavior is subject to change based on user feedback.`)
+                                    }
+                                })
+                                message.delete()
+                            } else {
+                                message.channel.send('Please use the *Reply* function with this command to archive a message.')
+                            }
+                        })
+                    })
+                } else {
+                    message.channel.send(`AutoDelete needs to be enabled for this channel before the archive function is made available. Ask an administrator to use the command \`!adx channel add ${message.channel.id} [timeout minutes]\`.`)
+                }
+                break
+            case 'ad':
+                switch (args[0]) {
+                    case 'help':
+                        message.channel.send(
+                            `*AutoDelete can now help you save important messages from temporary channels, great for keeping a record of something you don't want to lose.*\n\nHow do you do this? It's simple. **Simply reply to your message with \`!archive\` and AutoDelete will save it in <#${db.data.settings.archive}>.**\n\nFor server administrators, there is a suite of commands that can now help you manage AutoDelete across multiple channels. Use \`!adx help\` for more information.`
+                        )
+                        break
+                }
+                break
+            default:
+                break
         }
     }
 });
 
 // Spin up a basic HTML front-end page.
-const http = require('http');
+import http from 'http'
 const server = http.createServer((request, response) => {
-    response.writeHead(200, {"Content-Type": "text/plain"});
-    response.end(`Hi, I'm AutoDelete!`);
+    response.writeHead(200, {"Content-Type": "text/plain"})
+    response.end(`Hi, I'm AutoDelete!`)
 });
-const port = process.env.PORT || 1337;
-server.listen(port);
+const port = process.env.PORT || 1337
+server.listen(port)
