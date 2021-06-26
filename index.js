@@ -80,6 +80,7 @@ client.on('message', async message => {
                                     await db.write()
                                     break
                             }
+                            break
                         case 'clear':
                             message.channel.send(`**Clearing <#${message.channel.id}>.** This may take some time, depending on the number of messages to delete due to Discord API restrictions.`)
                             let fetched
@@ -111,7 +112,31 @@ client.on('message', async message => {
                                 message.channel.messages.fetch(msg.reference.messageID).then(m => {
                                     if (message.author.id === m.author.id) {
                                         if (db.data.settings.archive !== '') {
-                                            client.channels.cache.get(db.data.settings.archive).send(`**<@${m.author.id}>**: ${m.content}`)
+                                            // Create a new message embed
+                                            const embed = new Discord.MessageEmbed()
+                                                .setAuthor(m.member.displayName, m.author.displayAvatarURL())
+                                                .setDescription(m.content)
+                                                .setTimestamp(m.createdTimestamp)
+
+                                            // Attach image/video if the original message had one
+                                            if (m.attachments) {
+                                                if (m.attachments.length >= 1) {
+                                                    m.attachments.forEach(att => {
+                                                        embed.attachFiles(att.attachment)
+                                                    })
+                                                } else {
+                                                    m.attachments.forEach(att => {
+                                                        if (att.name.slice(att.name.length - 3) !== 'mp4') {
+                                                            embed.attachFiles(att.attachment)
+                                                            embed.setImage(`attachment://${att.name}`)
+                                                        } else {
+                                                            embed.attachFiles(att.attachment)
+                                                        }
+                                                    })
+                                                }
+                                            }
+
+                                            client.channels.cache.get(db.data.settings.archive).send(embed)
                                         } else {
                                             message.channel.send('An administrator needs to set up the channel to be used for archiving messages. Ask them to use the command `!adx archive set [channel ID]`.')
                                         }  
