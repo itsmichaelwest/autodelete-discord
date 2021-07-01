@@ -1,5 +1,5 @@
 import Discord from 'discord.js'
-const client = new Discord.Client()
+const client = new Discord.Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION'] })
 import { Low, JSONFile } from 'lowdb'
 import { fileURLToPath } from 'url'
 const prefix = '!'
@@ -97,6 +97,55 @@ client.on('message', async message => {
                                 `**AutoDelete administration reference**\n\`channel [add|remove] [channel ID] [timeout minutes]\` - Add or remove a channel from the automatic deletion list. The timeout value is required when adding a new channel.\n\`archive [set|clear] [channel ID]\` - Set or clear the channel used for archiving messages. If the channel is cleared, users will not be able to archive their messages.\n\`clear\` - Clears the current channel of all messages.`
                             )
                             break
+                        case 'fetch':
+                            message.channel.messages.fetch({ limit: 1 }).then(msg => {
+                                msg.forEach(m => {
+                                    if (m.reference) {
+                                        message.channel.messages.fetch(m.reference.messageID).then(m2 => {
+                                            message.channel.send('```json\n' + JSON.stringify(m2, null, '\t') + '\n```')
+                                        })
+                                    }
+                                })
+                            })
+                            break
+                        case 'forcearchive':
+                            if (db.data.settings.channels.includes(message.channel.id)) {
+                                message.channel.messages.fetch(args[1]).then(async msg => {
+                                    if (!msg.partial) {
+                                        const embed = new Discord.MessageEmbed()
+                                            .setAuthor(msg.member.displayName, msg.author.displayAvatarURL())
+                                            .setDescription(msg.content)
+                                            .setFooter(`Archived by ${msg.member.displayName}`, msg.author.displayAvatarURL())
+                                            .setTimestamp(msg.createdTimestamp)
+
+                                        // Attach image/video if the original message had one
+                                        if (msg.attachments) {
+                                            if (msg.attachments.length >= 1) {
+                                                msg.attachments.forEach(att => {
+                                                    embed.attachFiles(att.attachment)
+                                                })
+                                            } else {
+                                                msg.attachments.forEach(att => {
+                                                    if (att.name.slice(att.name.length - 3) !== 'mp4') {
+                                                        embed.attachFiles(att.attachment)
+                                                        embed.setImage(`attachment://${att.name}`)
+                                                    } else {
+                                                        embed.attachFiles(att.attachment)
+                                                    }
+                                                })
+                                            }
+                                        }
+
+                                        client.channels.cache.get(db.data.settings.archive).send(embed)
+                                    } else {
+                                        await msg.fetch()
+                                        message.channel.send('This message was in `PARTIAL` format. We\'ve attempted to upgrade it to a full instance message. Try running the `forcearchive` command again and see if the message is send to the archive channel.')
+                                    }
+                                })
+                            } else {
+                                message.channel.send(`AutoDelete needs to be enabled for this channel before the archive function is made available. Ask an administrator to use the command \`!adx channel add ${message.channel.id} [timeout minutes]\`.`)
+                            }
+                            break
                         default:
                             message.channel.send('Unknown command. Type `!adx help` for command reference.')
                     }
@@ -110,12 +159,15 @@ client.on('message', async message => {
                         messages.forEach(msg => {
                             if (msg.reference) {
                                 message.channel.messages.fetch(msg.reference.messageID).then(m => {
-                                    if (message.author.id === m.author.id) {
-                                        if (db.data.settings.archive !== '') {
+                                    if (db.data.settings.archive !== '') {
+                                        if (m.cleanContent.length >= 2048) {
+                                            message.channel.send('Oops, AutoDelete doesn\'t yet support messages longer than 2048 characters.')
+                                        } else {
                                             // Create a new message embed
                                             const embed = new Discord.MessageEmbed()
                                                 .setAuthor(m.member.displayName, m.author.displayAvatarURL())
                                                 .setDescription(m.content)
+                                                .setFooter(`Archived by ${msg.member.displayName}`, msg.author.displayAvatarURL())
                                                 .setTimestamp(m.createdTimestamp)
 
                                             // Attach image/video if the original message had one
@@ -137,11 +189,9 @@ client.on('message', async message => {
                                             }
 
                                             client.channels.cache.get(db.data.settings.archive).send(embed)
-                                        } else {
-                                            message.channel.send('An administrator needs to set up the channel to be used for archiving messages. Ask them to use the command `!adx archive set [channel ID]`.')
-                                        }  
+                                        }
                                     } else {
-                                        message.channel.send(`Sorry <@${message.author.id}>, messages can only be archived by their author right now. This behavior is subject to change based on user feedback.`)
+                                        message.channel.send('An administrator needs to set up the channel to be used for archiving messages. Ask them to use the command `!adx archive set [channel ID]`.')
                                     }
                                 })
                                 message.delete()
