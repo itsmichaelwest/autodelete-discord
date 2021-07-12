@@ -1,2 +1,3 @@
-VERSION = '2.0.0'
-CODENAME = 'Electric Boogaloo'
+BOT_NAME = 'Evanescence'
+VERSION = '2.1'
+CODENAME = 'Gateway Arch'

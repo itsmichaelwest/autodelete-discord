@@ -6,11 +6,12 @@ from discord_slash.context import ComponentContext, SlashContext
 from discord_slash import cog_ext
 import asyncio
 from discord_slash.model import ButtonStyle
+from datetime import datetime, timedelta
 
 from discord_slash.utils.manage_commands import create_option
 from discord_slash.utils.manage_components import create_actionrow, create_button, wait_for_component
 
-from constants import VERSION, CODENAME
+from constants import BOT_NAME, VERSION, CODENAME
 
 import cogs.db
 from cogs.timeconvert import convert_secs
@@ -33,8 +34,8 @@ class AutoDelete(commands.Cog):
             try:
                 channel = await self.bot.fetch_channel(c["channel"])
                 embed = Embed()
-                embed.title = ":warning: AutoDelete was restarted"
-                embed.description = "Due to the privacy-preserving nature of this bot, AutoDelete is unable to delete messages sent before the restart occurred. A server administrator can run `/clear` in the channel to remove all messages instead of manually deleting them."
+                embed.title = f":warning: {BOT_NAME} was restarted"
+                embed.description = f"Due to the privacy-preserving nature of this bot, {BOT_NAME} is unable to delete messages sent before the restart occurred. A server administrator can run `/clear` in the channel to remove all messages instead of manually deleting them."
                 embed.color = discord.Color.dark_gold()
                 await channel.send(embed=embed)
             except discord.errors.Forbidden:
@@ -78,7 +79,7 @@ class AutoDelete(commands.Cog):
                 except discord.errors.Forbidden:
                     error_embed = Embed()
                     error_embed.title = ":no_entry: Missing bot permsissions"
-                    error_embed.description = f"""AutoDelete does not have permission to send messages in **<#{channel_id}>**. Ask a server administrator to ensure that the AutoDelete role has the following permissions:
+                    error_embed.description = f"""{BOT_NAME} does not have permission to send messages in **<#{channel_id}>**. Ask a server administrator to ensure that the {BOT_NAME} role has the following permissions:
                     • *View Channel*
                     • *Send Messages*
                     • *Embed Links*
@@ -101,7 +102,7 @@ class AutoDelete(commands.Cog):
 
     @cog_ext.cog_slash(
         name="info",
-        description="Get current information about how AutoDelete is set up in this channel."
+        description=f"Get current information about how {BOT_NAME} is set up in this channel."
     )
     async def get_info(self, ctx: SlashContext):
         result = cogs.db.get_info(ctx.channel.id)
@@ -109,7 +110,7 @@ class AutoDelete(commands.Cog):
         if result:
             time = f"{str(datetime.timedelta(minutes=result['timeout']))}"
             
-            embed.title = ":white_check_mark: AutoDelete is active in this channel"
+            embed.title = f":white_check_mark: {BOT_NAME} is active in this channel"
             embed.add_field(
                 name="Timeout",
                 value=time
@@ -127,8 +128,8 @@ class AutoDelete(commands.Cog):
                     value="*Not configured*"
                 )
         else:
-            embed.title = ":no_entry_sign: AutoDelete is not set up in this channel."
-            embed.description = "Ask a server administrator to run the `/setup` command to configure AutoDelete for this channel."
+            embed.title = f":no_entry_sign: {BOT_NAME} is not set up in this channel."
+            embed.description = f"Ask a server administrator to run the `/setup` command to configure {BOT_NAME} for this channel."
             embed.color = discord.Color.dark_red()
 
         await ctx.send(embed=embed)
@@ -136,7 +137,7 @@ class AutoDelete(commands.Cog):
 
     @cog_ext.cog_slash(
         name="timeout", 
-        description="Set the timeout for AutoDelete in this channel.",
+        description=f"Set the timeout for {BOT_NAME} in this channel.",
         options=[
             create_option(
                 name="minutes",
@@ -166,7 +167,7 @@ class AutoDelete(commands.Cog):
         options=[
             create_option(
                 name="channel",
-                description="A valid channel for AutoDelete to archive messages into.",
+                description=f"A valid channel for {BOT_NAME} to archive messages into.",
                 option_type=7,
                 required=True
             )
@@ -187,13 +188,27 @@ class AutoDelete(commands.Cog):
     # Clear command
     @cog_ext.cog_slash(
         name="clear",
-        description="Clear all messages in this channel."
+        description="Clear messages in this channel.",
+        options=[
+            create_option(
+                name="minutes",
+                description="Delete messages older than the amount of time.",
+                option_type=4,
+                required=False
+            )
+        ]
     )
-    async def clear_all(self, ctx: SlashContext):
+    async def clear_all(self, ctx: SlashContext, minutes):
         if ctx.author.guild_permissions.administrator:
             messages = await ctx.channel.history(limit=None).flatten()
-            await ctx.channel.delete_messages(messages)
-            await ctx.send('Done! All messages have been deleted.', hidden=True)
+            if minutes:
+                await ctx.defer(hidden=True)
+                for message in messages:
+                    if (message.created_at + timedelta(minutes=minutes)) > datetime.now():
+                        await message.delete()
+            else:
+                await ctx.channel.delete_messages(messages)
+            await ctx.send('Done! Messages have been deleted.', hidden=True)
         else:
             await ctx.send(embed=no_perms_embed, hidden=True)
 
@@ -201,24 +216,24 @@ class AutoDelete(commands.Cog):
     # Help command
     @cog_ext.cog_slash(
         name="help",
-        description="Get help on using AutoDelete."
+        description=f"Get help on using {BOT_NAME}."
     )
     async def help(self, ctx: SlashContext):
         helpEmbed = Embed()
-        helpEmbed.title = "AutoDelete Help"
-        helpEmbed.description = """*AutoDelete* is pretty simple to use. Most of the time, you won't even know its there.
+        helpEmbed.title = f"{BOT_NAME} Help"
+        helpEmbed.description = f"""*{BOT_NAME}* is pretty simple to use. Most of the time, you won't even know its there.
         
-        **Initializing AutoDelete**
-        Before AutoDelete can be used in a channel, you need to type `/setup` and then choose the `initialize` option from the list. This will register the channel with AutoDelete with a default timeout of 3 hours.
+        **Initializing {BOT_NAME}**
+        Before {BOT_NAME} can be used in a channel, you need to type `/setup` and then choose the `initialize` option from the list. This will register the channel with {BOT_NAME} with a default timeout of 3 hours.
 
         **Archiving a message**
         To archive a message, reply to it with the text `!archive`.
 
         **Updating the deletion timeout**
-        You can adjust the deletion timeout by typing `/timeout` followed by the number of minutes you would like messages to persist for. AutoDelete will apply the timeout to all new messages, and update the channel description.
+        You can adjust the deletion timeout by typing `/timeout` followed by the number of minutes you would like messages to persist for. {BOT_NAME} will apply the timeout to all new messages, and update the channel description.
 
         **Deleting all messages in a channel**
-        Sometimes, you'll want to clear a channel of all messages. AutoDelete also supports this functionality, use the `/clear` command and AutoDelete will attempt to delete all the messages in the channel.
+        Sometimes, you'll want to clear a channel of all messages. {BOT_NAME} also supports this functionality, use the `/clear` command and {BOT_NAME} will attempt to delete all the messages in the channel.
         """
         await ctx.send(embed=helpEmbed, hidden=True)
 
@@ -226,13 +241,13 @@ class AutoDelete(commands.Cog):
     # Changelog command
     @cog_ext.cog_slash(
         name="changelog",
-        description=f"What's new in AutoDelete?"
+        description=f"What's new in {BOT_NAME}?"
     )
     async def changelog(self, ctx: SlashContext):
         changelogEmbed = Embed()
-        changelogEmbed.title = f"AutoDelete {VERSION} *{CODENAME}*"
+        changelogEmbed.title = f"{BOT_NAME} {VERSION} *{CODENAME}*"
         changelogEmbed.color = discord.Color.blurple()
-        changelogEmbed.description = f"""• AutoDelete has been rewritten using Python for improved development experience.
+        changelogEmbed.description = f"""• {BOT_NAME} has been rewritten using Python for improved development experience.
         • Administration commands are now accessed as slash commands. Simply type a forward slash (`/`) to see the available commands.
         • Timeouts can now be modified without first requiring you to delete the channel from the bot configuration.
         • Setting the archive channel is now significantly easier using the updated channel picker!
@@ -244,7 +259,7 @@ class AutoDelete(commands.Cog):
 
     @cog_ext.cog_slash(
         name="setup",
-        description="AutoDelete setup."
+        description=f"{BOT_NAME} setup."
     )
     async def admin(self, ctx: SlashContext):
         if ctx.author.guild_permissions.administrator:
@@ -252,12 +267,12 @@ class AutoDelete(commands.Cog):
                 create_button(
                     custom_id="autodelete-init",
                     style=ButtonStyle.blurple,
-                    label="Initialize AutoDelete in this channel"
+                    label=f"Initialize {BOT_NAME} in this channel"
                 ),
                 create_button(
                     custom_id="autodelete-cdel",
                     style=ButtonStyle.danger,
-                    label="Remove AutoDelete from this channel"
+                    label=f"Remove {BOT_NAME} from this channel"
                 )
             )
             await ctx.send("You can perform a variety of setup commands here. To cancel this, just dismiss the message.", components=[action_row], hidden=True)
@@ -268,7 +283,7 @@ class AutoDelete(commands.Cog):
                     await ctx.channel.edit(topic="Messages are deleted after 3 hours. Reply to a message with **!archive** to save it.")
             elif button_ctx.custom_id == "autodelete-cdel":
                 if cogs.db.reset_channel(ctx.channel.id):
-                    await button_ctx.edit_origin(content="This channel has been removed from AutoDelete. Re-run `/setup` and choose `Initialize` to set up AutoDelete again.")
+                    await button_ctx.edit_origin(content=f"This channel has been removed from {BOT_NAME}. Re-run `/setup` and choose `Initialize` to set up {BOT_NAME} again.")
         else:
             await ctx.send(embed=no_perms_embed, hidden=True)
         
