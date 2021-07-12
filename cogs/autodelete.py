@@ -6,7 +6,7 @@ from discord_slash.context import ComponentContext, SlashContext
 from discord_slash import cog_ext
 import asyncio
 from discord_slash.model import ButtonStyle
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from discord_slash.utils.manage_commands import create_option
 from discord_slash.utils.manage_components import create_actionrow, create_button, wait_for_component
@@ -198,13 +198,14 @@ class AutoDelete(commands.Cog):
             )
         ]
     )
-    async def clear_all(self, ctx: SlashContext, minutes):
+    async def clear_all(self, ctx: SlashContext, minutes=None):
         if ctx.author.guild_permissions.administrator:
             messages = await ctx.channel.history(limit=None).flatten()
             if minutes:
+                compare_timestamp = datetime.utcnow() - timedelta(minutes=minutes)
                 await ctx.defer(hidden=True)
                 for message in messages:
-                    if (message.created_at + timedelta(minutes=minutes)) > datetime.now():
+                    if compare_timestamp > message.created_at:
                         await message.delete()
             else:
                 await ctx.channel.delete_messages(messages)
