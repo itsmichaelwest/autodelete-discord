@@ -73,12 +73,11 @@ class AutoDelete(commands.Cog):
             message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
             result = cogs.db.get_archive(message.channel.id)
             if result:
-                embed.set_author(name=message.author.display_name, icon_url=message.author.avatar_url)
+                member = await message.guild.fetch_member(message.author.id)
+                embed.set_author(name=member.display_name, icon_url=member.avatar_url)
                 embed.description = message.content
                 embed.set_footer(text=f"Archived by {ctx.message.author.display_name}", icon_url=ctx.message.author.avatar_url)
                 embed.timestamp = ctx.message.created_at
-
-
 
                 channel_id = result
                 try:
