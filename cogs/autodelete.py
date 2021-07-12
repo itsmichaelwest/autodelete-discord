@@ -37,7 +37,7 @@ class AutoDelete(commands.Cog):
                 embed.title = f":warning: {BOT_NAME} was restarted"
                 embed.description = f"Due to the privacy-preserving nature of this bot, {BOT_NAME} may not be able to delete messages sent before the restart occurred. A server administrator can run `/clear` in the channel to remove all messages instead of manually deleting them."
                 embed.color = discord.Color.dark_gold()
-                await channel.send(embed=embed)
+                #await channel.send(embed=embed)
             except discord.errors.Forbidden:
                 pass
         
@@ -119,7 +119,7 @@ class AutoDelete(commands.Cog):
         result = cogs.db.get_info(ctx.channel.id)
         embed = Embed()
         if result:
-            time = f"{str(datetime.timedelta(minutes=result['timeout']))}"
+            time = f"{str(timedelta(minutes=result['timeout']))}"
             
             embed.title = f":white_check_mark: {BOT_NAME} is active in this channel"
             embed.add_field(
@@ -278,7 +278,10 @@ class AutoDelete(commands.Cog):
             if button_ctx.custom_id == "autodelete-init":
                 if cogs.db.init_bot(ctx.guild.id, ctx.channel.id):
                     await button_ctx.edit_origin(content="Channel has been initialized with a default timeout of 3 hours.")
-                    await ctx.channel.edit(topic="Messages are deleted after 3 hours. Reply to a message with **!archive** to save it.")
+                    try:
+                        await ctx.channel.edit(topic="Messages are deleted after 3 hours. Reply to a message with **!archive** to save it.")
+                    except:
+                        pass
             elif button_ctx.custom_id == "autodelete-cdel":
                 if cogs.db.reset_channel(ctx.channel.id):
                     await button_ctx.edit_origin(content=f"This channel has been removed from {BOT_NAME}. Re-run `/setup` and choose `Initialize` to set up {BOT_NAME} again.")
