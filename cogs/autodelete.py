@@ -35,7 +35,7 @@ class AutoDelete(commands.Cog):
                 channel = await self.bot.fetch_channel(c["channel"])
                 embed = Embed()
                 embed.title = f":warning: {BOT_NAME} was restarted"
-                embed.description = f"Due to the privacy-preserving nature of this bot, {BOT_NAME} is unable to delete messages sent before the restart occurred. A server administrator can run `/clear` in the channel to remove all messages instead of manually deleting them."
+                embed.description = f"Due to the privacy-preserving nature of this bot, {BOT_NAME} may not be able to delete messages sent before the restart occurred. A server administrator can run `/clear` in the channel to remove all messages instead of manually deleting them."
                 embed.color = discord.Color.dark_gold()
                 await channel.send(embed=embed)
             except discord.errors.Forbidden:
@@ -47,7 +47,7 @@ class AutoDelete(commands.Cog):
         if message.author.bot:
             return
         else:
-            messages = await message.channel.history(limit=100).flatten()
+            messages = await message.channel.history(limit=300).flatten()
             delta_mins = cogs.db.get_is_autodelete_active(message.channel.id)
 
             if delta_mins:
