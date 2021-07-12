@@ -35,7 +35,10 @@ class AutoDelete(commands.Cog):
             embed.title = ":warning: AutoDelete was restarted"
             embed.description = "Due to the privacy-preserving nature of this bot, AutoDelete is unable to delete messages sent before the restart occurred. A server administrator can run `/clear` in the channel to remove all messages instead of manually deleting them."
             embed.color = discord.Color.dark_gold()
-            await channel.send(embed=embed)
+            try:
+                await channel.send(embed=embed)
+            except discord.errors.Forbidden:
+                pass
         
 
     @commands.Cog.listener()
