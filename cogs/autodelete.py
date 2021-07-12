@@ -47,9 +47,20 @@ class AutoDelete(commands.Cog):
         if message.author.bot:
             return
         else:
-            result = cogs.db.get_is_autodelete_active(message.channel.id)
-            if result:
-                await asyncio.sleep(int(result) * 60)
+            messages = await message.channel.history(limit=100).flatten()
+            delta_mins = cogs.db.get_is_autodelete_active(message.channel.id)
+
+            if delta_mins:
+                compare_timestamp = datetime.utcnow() - timedelta(minutes=delta_mins)
+
+                for m in messages:
+                    if compare_timestamp > m.created_at:
+                        try:
+                            await m.delete()
+                        except:
+                            print('Could not delete the message')
+
+                await asyncio.sleep(int(delta_mins) * 60)
                 await message.delete()
 
 
@@ -188,30 +199,13 @@ class AutoDelete(commands.Cog):
     # Clear command
     @cog_ext.cog_slash(
         name="clear",
-        description="Clear messages in this channel.",
-        options=[
-            create_option(
-                name="minutes",
-                description="Delete messages older than the amount of time.",
-                option_type=4,
-                required=False
-            )
-        ]
+        description="Clear messages in this channel."
     )
-    async def clear_all(self, ctx: SlashContext, minutes=None):
+    async def clear_all(self, ctx: SlashContext):
         if ctx.author.guild_permissions.administrator:
+            await ctx.defer(hidden=True)
             messages = await ctx.channel.history(limit=None).flatten()
-            if minutes:
-                compare_timestamp = datetime.utcnow() - timedelta(minutes=minutes)
-                await ctx.defer(hidden=True)
-                for message in messages:
-                    if compare_timestamp > message.created_at:
-                        try:
-                            await message.delete()
-                        except:
-                            print('Could not delete the message')
-            else:
-                await ctx.channel.delete_messages(messages)
+            await ctx.channel.delete_messages(messages)
             await ctx.send('Done! Messages have been deleted.', hidden=True)
         else:
             await ctx.send(embed=no_perms_embed, hidden=True)
