@@ -206,7 +206,10 @@ class AutoDelete(commands.Cog):
                 await ctx.defer(hidden=True)
                 for message in messages:
                     if compare_timestamp > message.created_at:
-                        await message.delete()
+                        try:
+                            await message.delete()
+                        except:
+                            print('Could not delete the message')
             else:
                 await ctx.channel.delete_messages(messages)
             await ctx.send('Done! Messages have been deleted.', hidden=True)
