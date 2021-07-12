@@ -7,9 +7,11 @@ from discord_slash import cog_ext
 import asyncio
 from discord_slash.model import ButtonStyle
 from datetime import date, datetime, time, timedelta
-
+import os
 from discord_slash.utils.manage_commands import create_option
 from discord_slash.utils.manage_components import create_actionrow, create_button, wait_for_component
+import requests
+from urllib.parse import urlparse
 
 from constants import BOT_NAME, VERSION, CODENAME
 
@@ -37,7 +39,7 @@ class AutoDelete(commands.Cog):
                 embed.title = f":warning: {BOT_NAME} was restarted"
                 embed.description = f"Due to the privacy-preserving nature of this bot, {BOT_NAME} may not be able to delete messages sent before the restart occurred. A server administrator can run `/clear` in the channel to remove all messages instead of manually deleting them."
                 embed.color = discord.Color.dark_gold()
-                #await channel.send(embed=embed)
+                await channel.send(embed=embed)
             except discord.errors.Forbidden:
                 pass
         
@@ -76,16 +78,26 @@ class AutoDelete(commands.Cog):
                 embed.set_footer(text=f"Archived by {ctx.message.author.display_name}", icon_url=ctx.message.author.avatar_url)
                 embed.timestamp = ctx.message.created_at
 
-                if message.attachments:
-                    embed.set_image(url=message.attachments[0])
 
-                if message.stickers:
-                    print(message.stickers)
 
                 channel_id = result
                 try:
                     channel = await self.bot.fetch_channel(int(channel_id))
-                    await channel.send(embed=embed)
+
+                    if message.attachments:
+                        image_url = str(message.attachments[0])
+                        url_path = urlparse(image_url).path
+                        ext = os.path.splitext(url_path)[1]
+                        image_data = requests.get(image_url).content
+                        file_name = f"image{ext}"
+                        with open(file_name, 'wb') as handler:
+                            handler.write(image_data)
+                        file_data = discord.File(file_name)
+                        embed.set_image(url=f"attachment://{file_name}")
+                        await channel.send(file=file_data, embed=embed)
+                        os.remove(file_name)
+                    else:
+                        await channel.send(embed=embed)
                     await ctx.message.delete()
                 except discord.errors.Forbidden:
                     error_embed = Embed()
