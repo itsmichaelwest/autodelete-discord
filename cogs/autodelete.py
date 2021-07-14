@@ -199,9 +199,12 @@ class AutoDelete(commands.Cog):
     async def clear_all(self, ctx: SlashContext):
         if ctx.author.guild_permissions.administrator:
             await ctx.defer(hidden=True)
-            messages = await ctx.channel.history(limit=None).flatten()
-            await ctx.channel.delete_messages(messages)
-            await ctx.send('Done! Messages have been deleted.', hidden=True)
+            deleted = await ctx.channel.purge()
+            embed = Embed()
+            embed.title = ":white_check_mark: Clear successful"
+            embed.description = f"Deleted {len(deleted)} messages from this channel."
+            embed.color = discord.Color.dark_green()
+            await ctx.send(embed=embed, hidden=True)
         else:
             await ctx.send(embed=no_perms_embed, hidden=True)
 
@@ -223,7 +226,7 @@ class AutoDelete(commands.Cog):
         To archive a message, reply to it with the text `!archive`.
 
         **Updating the deletion timeout**
-        You can adjust the deletion timeout by typing `/timeout` followed by the number of minutes you would like messages to persist for. {BOT_NAME} will apply the timeout to all new messages, and update the channel description.
+        You can adjust the deletion timeout by typing `/timeout` followed by the number of minutes you would like messages to persist for. {BOT_NAME} will apply the timeout to all messages in the channel, and update the channel description.
 
         **Deleting all messages in a channel**
         Sometimes, you'll want to clear a channel of all messages. {BOT_NAME} also supports this functionality, use the `/clear` command and {BOT_NAME} will attempt to delete all the messages in the channel.
