@@ -1,4 +1,5 @@
 import datetime
+from re import T
 import discord
 from discord import Embed
 from discord.ext import commands, tasks
@@ -198,13 +199,27 @@ class AutoDelete(commands.Cog):
     )
     async def clear_all(self, ctx: SlashContext):
         if ctx.author.guild_permissions.administrator:
-            await ctx.defer(hidden=True)
-            deleted = await ctx.channel.purge()
-            embed = Embed()
-            embed.title = ":white_check_mark: Clear successful"
-            embed.description = f"Deleted {len(deleted)} messages from this channel."
-            embed.color = discord.Color.dark_green()
-            await ctx.send(embed=embed, hidden=True)
+            sure_embed = Embed()
+            sure_embed.title = ":grey_question: Are you sure?"
+            sure_embed.description = "This will delete all messages from this channel, and cannot be undone. Dismiss this message to cancel."
+            sure_embed.color = discord.Color.lighter_grey()
+            action_row = create_actionrow(
+                create_button(
+                    custom_id="autodelete-delall",
+                    style=ButtonStyle.danger,
+                    label="Delete messages"
+                )
+            )
+            await ctx.send(embed=sure_embed, components=[action_row], hidden=True)
+            button_ctx: ComponentContext = await wait_for_component(self.bot, components=action_row)
+            if button_ctx.custom_id == "autodelete-delall":
+                await button_ctx.defer(hidden=True)
+                deleted = await button_ctx.channel.purge()
+                embed = Embed()
+                embed.title = ":white_check_mark: Clear successful"
+                embed.description = f"Deleted {len(deleted)} messages from this channel."
+                embed.color = discord.Color.dark_green()
+                await button_ctx.edit_origin(embed=embed)
         else:
             await ctx.send(embed=no_perms_embed, hidden=True)
 
