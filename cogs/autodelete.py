@@ -243,7 +243,7 @@ class AutoDelete(commands.Cog):
         changelogEmbed = Embed()
         changelogEmbed.title = f"{BOT_NAME} {VERSION} *{CODENAME}*"
         changelogEmbed.color = discord.Color.blurple()
-        changelogEmbed.description = f"""• {BOT_NAME} Now deletes messages using a task loop as opposed to setting a timer when the message is sent. This is more robust, allows for deletion to occur after the bot has been restarted, and allows for the timeout to be adjusted for all messages on the fly.
+        changelogEmbed.description = f"""• {BOT_NAME} now deletes messages using a task loop as opposed to setting a timer when the message is sent. This is more robust, allows for deletion to occur after the bot has been restarted, and allows for the timeout to be adjusted for all messages on the fly.
         • The `/clear` command has been updated to be more robust and to return more detail once deletion has been completed.
         """
         changelogEmbed.set_footer(text="Last update: July 14, 2021")
