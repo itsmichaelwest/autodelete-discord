@@ -1,7 +1,7 @@
 import datetime
 import discord
 from discord import Embed
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord_slash.context import ComponentContext, SlashContext
 from discord_slash import cog_ext
 import asyncio
@@ -30,18 +30,7 @@ class AutoDelete(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         print(f"Logged in as {self.bot.user}")
-        print("Telling all active channels I was restarted...")
-        all_channels = cogs.db.get_all_info()
-        for c in all_channels:
-            try:
-                channel = await self.bot.fetch_channel(c["channel"])
-                embed = Embed()
-                embed.title = f":warning: {BOT_NAME} was restarted"
-                embed.description = f"Due to the privacy-preserving nature of this bot, {BOT_NAME} may not be able to delete messages sent before the restart occurred. A server administrator can run `/clear` in the channel to remove all messages instead of manually deleting them."
-                embed.color = discord.Color.dark_gold()
-                await channel.send(embed=embed)
-            except discord.errors.Forbidden:
-                pass
+        self.cleanup_self.start()
         
 
     @commands.Cog.listener()
@@ -49,21 +38,19 @@ class AutoDelete(commands.Cog):
         if message.author.bot:
             return
         else:
-            messages = await message.channel.history(limit=300).flatten()
             delta_mins = cogs.db.get_is_autodelete_active(message.channel.id)
-
             if delta_mins:
-                compare_timestamp = datetime.utcnow() - timedelta(minutes=delta_mins)
-
-                for m in messages:
-                    if compare_timestamp > m.created_at:
-                        try:
-                            await m.delete()
-                        except:
-                            print('Could not delete the message')
-
+                await message.channel.purge(before=(datetime.utcnow() - timedelta(minutes=delta_mins)))
                 await asyncio.sleep(int(delta_mins) * 60)
                 await message.delete()
+
+
+    @tasks.loop(minutes=1)
+    async def cleanup_self(self):
+        info = cogs.db.get_all_info()
+        for i in info:
+            channel = await self.bot.fetch_channel(i["channel"])
+            await channel.purge(before=(datetime.utcnow() - timedelta(minutes=i["timeout"])))
 
 
     @commands.command()
