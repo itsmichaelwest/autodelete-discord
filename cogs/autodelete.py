@@ -27,22 +27,11 @@ class AutoDelete(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+
     @commands.Cog.listener()
     async def on_ready(self):
         print(f"Logged in as {self.bot.user}")
         self.cleanup_self.start()
-        
-
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
-            return
-        else:
-            delta_mins = cogs.db.get_is_autodelete_active(message.channel.id)
-            if delta_mins:
-                await message.channel.purge(before=(datetime.utcnow() - timedelta(minutes=delta_mins)))
-                await asyncio.sleep(int(delta_mins) * 60)
-                await message.delete()
 
 
     @tasks.loop(minutes=1)
