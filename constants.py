@@ -1,3 +1,3 @@
 BOT_NAME = 'Evanescence'
-VERSION = '2.1'
-CODENAME = 'Gateway Arch'
+VERSION = '2.2'
+CODENAME = 'Yellowstone'

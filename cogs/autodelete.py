@@ -243,12 +243,10 @@ class AutoDelete(commands.Cog):
         changelogEmbed = Embed()
         changelogEmbed.title = f"{BOT_NAME} {VERSION} *{CODENAME}*"
         changelogEmbed.color = discord.Color.blurple()
-        changelogEmbed.description = f"""• {BOT_NAME} has been rewritten using Python for improved development experience.
-        • Administration commands are now accessed as slash commands. Simply type a forward slash (`/`) to see the available commands.
-        • Timeouts can now be modified without first requiring you to delete the channel from the bot configuration.
-        • Setting the archive channel is now significantly easier using the updated channel picker!
+        changelogEmbed.description = f"""• {BOT_NAME} Now deletes messages using a task loop as opposed to setting a timer when the message is sent. This is more robust, allows for deletion to occur after the bot has been restarted, and allows for the timeout to be adjusted for all messages on the fly.
+        • The `/clear` command has been updated to be more robust and to return more detail once deletion has been completed.
         """
-        changelogEmbed.set_footer(text="Last update: July 12, 2021")
+        changelogEmbed.set_footer(text="Last update: July 14, 2021")
         await ctx.send(embed=changelogEmbed)
 
 
