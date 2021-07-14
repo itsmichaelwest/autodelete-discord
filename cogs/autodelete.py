@@ -49,8 +49,16 @@ class AutoDelete(commands.Cog):
     async def cleanup_self(self):
         info = cogs.db.get_all_info()
         for i in info:
-            channel = await self.bot.fetch_channel(i["channel"])
-            await channel.purge(before=(datetime.utcnow() - timedelta(minutes=i["timeout"])))
+            try:
+                channel = await self.bot.fetch_channel(i["channel"])
+                before_time = datetime.utcnow() - timedelta(minutes=i["timeout"])
+                print(f"Cleaning up channel {channel} in server {channel.guild}, removing all messages sent before {before_time}.")
+                try:
+                    await channel.purge(before=before_time)
+                except:
+                    print(f"Unable to clean up {channel}")
+            except:
+                print(f"Unable to fetch information for channel {i['channel']}. The bot is likely not in this server.")
 
 
     @commands.command()
